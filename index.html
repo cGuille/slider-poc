@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Slider PoC</title>
+    <style>
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.slider {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+}
+
+.slider > * {
+    margin: 0;
+    position: relative;
+    transition: left .75s;
+}
+    </style>
+    <script>
+
+class Slider {
+    constructor(containerElt, delayMs, restartDelayMs) {
+        this.delay = delayMs;
+        this.restartDelay = restartDelayMs;
+
+        this.running = false;
+        this.timeout = null;
+        this.restartTimeout = null;
+
+        this.index = 0;
+
+        this.containerElt = containerElt;
+        this.containerElt.classList.add('slider');
+
+        this.items = Array.from(this.containerElt.children);
+        this.items.forEach(child => {
+            child.left = 0;
+            child.style.left = `${child.left}px`;
+        });
+    }
+
+    prev() {
+        this.stop(this.running);
+
+        if (this.index === 0) {
+            this.index = 0;
+            while (!this.reachedEnd()) {
+                this.next();
+            }
+        } else {
+            this.items.forEach(child => child.left += this.items[this.index - 1].offsetWidth);
+            this.index -= 1;
+        }
+
+        this.update();
+    }
+
+    next() {
+        this.stop(this.running);
+
+        if (this.reachedEnd()) {
+            this.items.forEach(child => child.left = 0);
+            this.index = 0;
+        } else {
+            this.items.forEach(child => child.left -= this.items[this.index].offsetWidth);
+            this.index += 1;
+        }
+
+        this.update();
+    }
+
+    reachedEnd() {
+        const remainingSize = this.items
+            .slice(this.index)
+            .map(item => item.offsetWidth)
+            .reduce((totalSize, itemSize) => totalSize + itemSize, 0)
+        ;
+
+        return remainingSize <= this.containerElt.offsetWidth;
+    }
+
+    update() {
+        this.items.forEach(child => child.style.left = `${child.left}px`);
+    }
+
+    run() {
+        this.stop();
+
+        this.running = true;
+
+        this.timeout = setTimeout(() => {
+            this.next();
+            this.run(this.delay);
+        }, this.delay);
+    }
+
+    stop(autorestart) {
+        this.running = autorestart;
+
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+
+        if (this.restartTimeout) {
+            clearTimeout(this.restartTimeout);
+            this.timeout = null;
+        }
+
+        if (autorestart) {
+            this.restartTimeout = setTimeout(() => this.run(), this.restartDelay);
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', main);
+
+function main() {
+    const slider = new Slider(document.querySelector('.slider'), 1000, 2000);
+
+    window.demo = slider;
+
+    document.getElementById('prev').addEventListener('click', () => slider.prev());
+    document.getElementById('next').addEventListener('click', () => slider.next());
+    document.getElementById('run').addEventListener('click', () => slider.run());
+    document.getElementById('stop').addEventListener('click', () => slider.stop());
+}
+    </script>
+</head>
+
+<body>
+    <section class="slider">
+        <a href="#first">
+            <img src="https://via.placeholder.com/300/09f/fff.png?text=first" />
+        </a>
+        <a href="#second">
+            <img src="https://via.placeholder.com/400/90f/fff.png?text=second" />
+        </a>
+        <a href="#third">
+            <img src="https://via.placeholder.com/500/f09/fff.png?text=third" />
+        </a>
+        <a href="#fourth">
+            <img src="https://via.placeholder.com/450/333/fff.png?text=fourth" />
+        </a>
+    </section>
+
+    <section>
+        <button id="prev">prev()</button>
+        <button id="next">next()</button>
+        <button id="run">run()</button>
+        <button id="stop">stop()</button>
+    </section>
+</body>
+
+</html>
